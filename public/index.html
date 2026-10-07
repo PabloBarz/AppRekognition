@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Imágenes con IA</title>
+    <style>
+        /* --- ESTILOS GENERALES --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #333333;
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* --- FORMULARIO Y CONTROLES --- */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555555;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #b4bcbe;
+            border-radius: 6px;
+            background-color: #fafafa;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+
+        input[type="file"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        /* --- SECCIÓN DE RESULTADOS --- */
+        .results-container {
+            margin-top: 25px;
+            border-top: 1px solid #e9ecef;
+            padding-top: 20px;
+        }
+
+        h3 {
+            color: #495057;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 15px;
+        }
+
+        .label-name {
+            font-weight: 500;
+            color: #212529;
+        }
+
+        .label-confidence {
+            background-color: #e2f0fe;
+            color: #004085;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .status-message {
+            color: #666666;
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Analizando archivos con AWS</h1>
+
+        <!-- Formulario controlado por JS mediante FormData -->
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="imagen">Seleccione imagen</label>
+                <input type="file" name="imagen" id="imagen" accept="image/*" required>
+            </div>
+            <button type="submit" id="btnEnviar">Enviar</button>
+        </form>
+
+        <div class="results-container">
+            <h3>Resultados del análisis</h3>
+            <ul id="listaEtiquetas">
+                <li class="status-message">Ninguna imagen analizada todavía.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Selección de elementos del DOM (Siguiendo la estructura de tu clase)
+        const form = document.getElementById("uploadForm");
+        const listaEtiquetas = document.getElementById("listaEtiquetas");
+        const btnEnviar = document.getElementById("btnEnviar");
+
+        // Escuchador del evento submit
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault(); // Detenemos la recarga tradicional de la página
+
+            // Estado visual de carga mientras responde la API
+            btnEnviar.disabled = true;
+            btnEnviar.innerText = "Analizando...";
+            listaEtiquetas.innerHTML = '<li class="status-message">Procesando imagen con IA de AWS...</li>';
+
+            // Captura los campos del formulario y gestiona el formato binario (multipart) en segundo plano
+            const formData = new FormData(form);
+
+            try {
+                // Petición hacia el endpoint local de tu backend en Node.js
+                const response = await fetch("/api/analizar", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                // Limpiamos los textos o estados previos de la lista
+                listaEtiquetas.innerHTML = "";
+
+                if (data.success && data.labels && data.labels.length > 0) {
+                    // Recorremos el arreglo de etiquetas que nos envió Rekognition
+                    data.labels.forEach(label => {
+                        const li = document.createElement("li");
+
+                        // Contenedor para el nombre de la etiqueta detectada
+                        const nameSpan = document.createElement("span");
+                        nameSpan.className = "label-name";
+                        nameSpan.textContent = label.Name;
+
+                        // Contenedor para el porcentaje de confianza
+                        const confidenceSpan = document.createElement("span");
+                        confidenceSpan.className = "label-confidence";
+                        confidenceSpan.textContent = `${label.Confidence.toFixed(1)}%`;
+
+                        // Construimos la estructura de la fila de la lista
+                        li.appendChild(nameSpan);
+                        li.appendChild(confidenceSpan);
+                        listaEtiquetas.appendChild(li);
+                    });
+                } else if (data.success) {
+                    listaEtiquetas.innerHTML = '<li class="status-message">No se identificaron elementos claros en la imagen.</li>';
+                } else {
+                    // Muestra el mensaje de error personalizado que configuraste en tu backend
+                    listaEtiquetas.innerHTML = `<li class="status-message" style="color: #dc3545;">Error: ${data.error || 'Fallo inesperado'}</li>`;
+                }
+
+            } catch (error) {
+                console.error("Error en la comunicación con el servidor:", error);
+                listaEtiquetas.innerHTML = '<li class="status-message" style="color: #dc3545;">Error de red al conectar con el servidor.</li>';
+            } finally {
+                // Devolvemos el botón a su estado original al terminar todo el flujo
+                btnEnviar.disabled = false;
+                btnEnviar.innerText = "Enviar";
+            }
+        });
+    </script>
+
+</body>
+</html>
