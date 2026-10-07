@@ -7,9 +7,12 @@ const path = require("path")
 const { RekognitionClient, DetectLabelsCommand } = require("@aws-sdk/client-rekognition");
 const { execArgv } = require("process");
 
-//OPCIONAL (considerarse cuando se realice pruebas con FLOCI)
 const app = express()
 const port = process.env.PORT || 3000
+
+//OPCIONAL (considerarse cuando se realice pruebas con FLOCI)
+const { mockClient } = require("aws-sdk-client-mock");
+const rekognitionMock = mockClient(RekognitionClient)
 
 //Indicar el servicio de reconocimiento
 
@@ -22,6 +25,16 @@ const rekognitionClient = new RekognitionClient({
   }
 })
 
+//Definir la respuesta perosnalizada
+//Cliente detecte un evento, devolvera... 
+rekognitionMock.on(DetectLabelsCommand).resolves({
+  Labels: [
+    { Name: 'Hombre', Confidence: 99.4 },
+    { Name: 'Niño', Confidence: 95.2 },
+    { Name: 'Perro', Confidence: 70.1 },
+    { Name: 'Mujer', Confidence: 98.4 }
+  ]
+})
 const upload = multer({storage: multer.memoryStorage()})
 
 app.use(express.static(path.join(__dirname, "public")))
