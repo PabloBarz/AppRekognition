@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Documentos con AWS Textract</title>
+    <style>
+        /* --- ESTILOS GENERALES --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 550px; /* Aumentado ligeramente para dar espacio a la nueva columna */
+        }
+
+        h1 {
+            color: #28a745;
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555555;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #28a745;
+            border-radius: 6px;
+            background-color: #fafafa;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+
+        button {
+            width: 100%;
+            background-color: #28a745;
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .contenedor-enlace {
+        display: flex;
+        justify-content: flex-end; 
+        margin: 15px 0px;       
+        }
+
+        .btn-document {
+        display: inline-block;
+        text-align: center;
+        text-decoration: none;
+
+        
+        background-color: #f3b817;
+        color: #ffffff;
+        border: none;
+        padding: 8px 16px;       
+        font-size: 14px;        
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        }
+
+        .results-container {
+            margin-top: 25px;
+            border-top: 1px solid #e9ecef;
+            padding-top: 20px;
+        }
+
+        h3 {
+            color: #495057;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr; 
+            align-items: center;
+            font-size: 14px;
+            gap: 10px;
+        }
+
+        .text-extracted {
+            font-weight: 500;
+            color: #212529;
+            word-break: break-word;
+        }
+
+        .block-type-badge {
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-align: center;
+            width: fit-content;
+        }
+
+        /* Colores dinámicos según el tipo de bloque */
+        .badge-line { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .badge-word { background-color: #e8daef; color: #6c3483; border: 1px solid #d7bde2; }
+        .badge-page { background-color: #e5e7e9; color: #5d6d7e; border: 1px solid #d5dbdb; }
+
+        .text-confidence {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .status-message {
+            color: #666666;
+            font-style: italic;
+            text-align: center;
+            display: block; /* Evita que el grid altere el mensaje inicial */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Extraer Texto de PDF (AWS Textract)</h1>
+
+        <form id="documentForm">
+            <div class="form-group">
+                <label for="documento">Seleccione archivo PDF (< 5 MB)</label>
+                <input type="file" name="documento" id="documento" accept=".pdf" required>
+            </div>
+            <button type="submit" id="btnProcesar">Extraer Texto</button>
+        </form>
+
+        <div class="contenedor-enlace">
+            <a class="btn-document" href="./index.html">Ir a Extracción de Documentos (Textract)</a>
+        </div>
+
+        <div class="results-container">
+            <h3>Estructura Completa de AWS</h3>
+            <ul id="listaTexto">
+                <li class="status-message">Ningún documento procesado todavía.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById("documentForm");
+        const listaTexto = document.getElementById("listaTexto");
+        const btnProcesar = document.getElementById("btnProcesar");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const fileInput = document.getElementById("documento");
+            const file = fileInput.files[0];
+
+            if (file && file.size > 5 * 1024 * 1024) {
+                listaTexto.innerHTML = '<li class="status-message" style="color: #dc3545;">El archivo supera el límite permitido de 5 MB.</li>';
+                return;
+            }
+
+            btnProcesar.disabled = true;
+            btnProcesar.innerText = "Procesando...";
+            listaTexto.innerHTML = '<li class="status-message">Leyendo líneas del documento con IA...</li>';
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch("/api/analizar-documento", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+                listaTexto.innerHTML = "";
+
+                if (data.success && data.rawBlocks && data.rawBlocks.length > 0) {
+                    
+                    data.rawBlocks.forEach(linea => {
+                        const li = document.createElement("li");
+
+                        // 1. Columna de Texto Extraído
+                        const textSpan = document.createElement("span");
+                        textSpan.className = "text-extracted";
+                        textSpan.textContent = linea.Text || `[Contenedor sin texto plano]`;
+
+                        // 2. Columna del Tipo de Bloque 
+                        const blockSpan = document.createElement("span");
+                        blockSpan.className = "block-type-badge";
+                        blockSpan.textContent = linea.BlockType || "UNKNOWN";
+                        
+                        // Subclase de color según el tipo de bloque de AWS
+                        if (linea.BlockType === "LINE") blockSpan.classList.add("badge-line");
+                        else if (linea.BlockType === "WORD") blockSpan.classList.add("badge-word");
+                        else blockSpan.classList.add("badge-page");
+
+                        // 3. Columna de Confianza
+                        const confidenceSpan = document.createElement("span");
+                        confidenceSpan.className = "text-confidence";
+                        
+                        const porcentaje = linea.Confidence ? `${linea.Confidence.toFixed(1)}%` : "100%";
+                        confidenceSpan.textContent = porcentaje;
+
+                        // Construimos la fila agregando los 3 elementos en orden
+                        li.appendChild(textSpan);
+                        li.appendChild(blockSpan);
+                        li.appendChild(confidenceSpan);
+                        listaTexto.appendChild(li);
+                    });
+                } else if (data.success) {
+                    listaTexto.innerHTML = '<li class="status-message">No se encontró texto legible en el documento.</li>';
+                } else {
+                    listaTexto.innerHTML = `<li class="status-message" style="color: #dc3545;">Error: ${data.error || 'Fallo inesperado'}</li>`;
+                }
+
+            } catch (error) {
+                console.error("Error en la comunicación con el servidor:", error);
+                listaTexto.innerHTML = '<li class="status-message" style="color: #dc3545;">Error de red al conectar con el servidor.</li>';
+            } finally {
+                btnProcesar.disabled = false;
+                btnProcesar.innerText = "Extraer Texto";
+            }
+        });
+    </script>
+
+</body>
+</html>

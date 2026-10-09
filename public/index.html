@@ -80,6 +80,34 @@
             background-color: #0056b3;
         }
 
+        .contenedor-enlace {
+        display: flex;
+        justify-content: flex-end; 
+        margin-bottom: 15px;       
+        }
+
+        .btn-document {
+        display: inline-block;
+        text-align: center;
+        text-decoration: none;
+
+        /* Estilos de color y fuente */
+        background-color: #f3b817;
+        color: #ffffff;
+        border: none;
+        padding: 8px 16px;       
+        font-size: 14px;        
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        }
+
+        /* Efecto Hover */
+        a.boton-estilo:hover {
+        background-color: #0056b3;
+        }
+
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
@@ -141,6 +169,9 @@
 
     <div class="container">
         <h1>Analizando archivos con AWS</h1>
+        <div class="contenedor-enlace">
+            <a class="btn-document" href="./documentos.html">Ir a Extracción de Documentos (Textract)</a>
+        </div>
 
         <!-- Formulario controlado por JS mediante FormData -->
         <form id="uploadForm">

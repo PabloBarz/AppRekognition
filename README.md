@@ -1,1 +1,1 @@
-# Consumiendo servicios de floci Rekognition
+# Consumiendo servicios de floci Rekognition y Textract
